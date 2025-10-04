@@ -1,4 +1,5 @@
 {
+    "version": 2,
     "builds": [
         {
             "src": "api/index.py",
@@ -7,8 +8,22 @@
     ],
     "routes": [
         {
+            "src": "/api/(.*)",
+            "dest": "/api/index.py",
+            "methods": [
+                "GET",
+                "POST",
+                "OPTIONS"
+            ]
+        },
+        {
             "src": "/(.*)",
-            "dest": "api/index.py"
+            "dest": "/api/index.py",
+            "methods": [
+                "GET",
+                "POST",
+                "OPTIONS"
+            ]
         }
     ]
 }
