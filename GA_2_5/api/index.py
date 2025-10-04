@@ -18,7 +18,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # ---------- models ----------
 class LatencyRequest(BaseModel):
     regions: list[str]
