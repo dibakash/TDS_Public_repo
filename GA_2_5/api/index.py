@@ -1,173 +1,72 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import List, Dict, Any
-import statistics
 import json
-from pathlib import Path
+import numpy as np
+import os
 
+# Create FastAPI app instance
 app = FastAPI()
 
-# Comprehensive CORS configuration
+# Enable CORS for all origins. Note: when allow_origins is ['*'],
+# many browsers will ignore Access-Control-Allow-Credentials if
+# allow_credentials is True. For a true wildcard + credentials,
+# you must set allow_credentials to False or specify explicit origins.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_credentials=False,
+    allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
-# Request model
-class RegionRequest(BaseModel):
-    regions: List[str]
-    threshold_ms: int
+# ---------- models ----------
+class LatencyRequest(BaseModel):
+    regions: list[str]
+    threshold_ms: float
 
 
-def load_telemetry_data():
-    """Load telemetry data from JSON file"""
-    try:
-        # Try multiple possible locations
-        possible_paths = [
-            "q-vercel-latency.json",
-            "./q-vercel-latency.json",
-            "/var/task/q-vercel-latency.json",
-            Path(__file__).parent.parent / "q-vercel-latency.json",
-        ]
-
-        for path in possible_paths:
-            data_path = Path(path) if isinstance(path, str) else path
-            if data_path.exists():
-                with open(data_path, "r") as f:
-                    data = json.load(f)
-                    print(f"✅ Loaded {len(data)} records from {path}")
-                    return data
-
-        print("❌ q-vercel-latency.json not found in any location")
-        return []
-
-    except Exception as e:
-        print(f"❌ Error loading data: {e}")
-        return []
+# ---------- helpers ----------
+def load_telemetry():
+    path = os.path.join(os.path.dirname(__file__), "..", "q-vercel-latency.json")
+    with open(path) as f:
+        records = json.load(f)
+    grouped = {}
+    for r in records:
+        grouped.setdefault(r["region"], []).append(
+            {"latency_ms": r["latency_ms"], "uptime": r["uptime_pct"]}
+        )
+    return grouped
 
 
-def calculate_percentile(data: List[float], percentile: float) -> float:
-    """Calculate percentile from list of values"""
-    if not data:
-        return 0.0
-    sorted_data = sorted(data)
-    index = (len(sorted_data) - 1) * percentile
-    lower = int(index)
-    upper = lower + 1
-    weight = index - lower
-
-    if upper >= len(sorted_data):
-        return sorted_data[lower]
-    return sorted_data[lower] * (1 - weight) + sorted_data[upper] * weight
+def calc_metrics(latencies, uptimes, threshold, region=None):
+    return {
+        "region": region,
+        "avg_latency": round(float(np.mean(latencies)), 2),
+        "p95_latency": round(float(np.percentile(latencies, 95)), 2),
+        "avg_uptime": round(float(np.mean(uptimes)), 2),
+        "breaches": int(np.sum(np.array(latencies) > threshold)),
+    }
 
 
-# Load data
-telemetry_data = load_telemetry_data()
+# ---------- routes ----------
+@app.get("/")
+def health():
+    return {
+        "msg": "FastAPI on Vercel works fine! :-) hello rituraj here :-) Oooooo! it working"
+    }
 
 
 @app.post("/api/latency")
-async def get_region_metrics(request: RegionRequest):
-    """Main endpoint at /api/latency"""
-    print(
-        f"📨 Received request: regions={request.regions}, threshold={request.threshold_ms}"
-    )
-
-    results = {}
-
-    # Group data by region
-    region_data = {}
-    for record in telemetry_data:
-        region = record["region"]
-        if region not in region_data:
-            region_data[region] = []
-        region_data[region].append(record)
-
-    for region in request.regions:
-        if region not in region_data:
-            # Region not found in data
-            results[region] = {
-                "avg_latency": 0.0,
-                "p95_latency": 0.0,
-                "avg_uptime": 0.0,
-                "breaches": 0,
-            }
-            continue
-
-        records = region_data[region]
-        latencies = [record["latency_ms"] for record in records]
-        uptimes = [
-            record["uptime_pct"] / 100.0 for record in records
-        ]  # Convert to decimal
-
-        # Calculate metrics
-        avg_latency = round(statistics.mean(latencies) if latencies else 0.0, 2)
-        p95_latency = round(calculate_percentile(latencies, 0.95), 2)
-        avg_uptime = round(statistics.mean(uptimes) if uptimes else 0.0, 4)
-        breaches = sum(1 for latency in latencies if latency > request.threshold_ms)
-
-        results[region] = {
-            "avg_latency": avg_latency,
-            "p95_latency": p95_latency,
-            "avg_uptime": avg_uptime,
-            "breaches": breaches,
-        }
-
-    print(f"📤 Returning results: {results}")
-
-    # Create response with explicit CORS headers
-    response = JSONResponse(content=results)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-
-    return response
-
-
-# CORS preflight handler - ESSENTIAL
-@app.options("/api/latency")
-async def options_latency():
-    response = JSONResponse(content={"status": "ok"})
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    return response
-
-
-# Handle all OPTIONS requests
-@app.options("/{rest_of_path:path}")
-async def preflight_handler(request: Request, rest_of_path: str):
-    response = JSONResponse(content={"status": "ok"})
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    return response
-
-
-@app.get("/")
-async def root():
-    return {
-        "message": "Latency Metrics API",
-        "endpoint": "POST /api/latency",
-        "example_request": {"regions": ["emea", "apac"], "threshold_ms": 174},
-    }
-
-
-@app.get("/api/latency")
-async def latency_info():
-    return {
-        "message": "Use POST method with JSON body",
-        "required_fields": ["regions", "threshold_ms"],
-        "example": {"regions": ["emea", "apac"], "threshold_ms": 174},
-    }
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000, debug=True)
+def latency_metrics(body: LatencyRequest):
+    telem = load_telemetry()
+    resp = []  # Initialize resp as a list
+    for reg in body.regions:
+        if reg not in telem:
+            raise HTTPException(status_code=400, detail=f"region '{reg}' not found")
+        lat = [x["latency_ms"] for x in telem[reg]]
+        upt = [x["uptime"] for x in telem[reg]]
+        resp.append(calc_metrics(lat, upt, body.threshold_ms, region=reg))
+    return {"regions": resp}
