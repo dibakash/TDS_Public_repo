@@ -12,16 +12,16 @@ def create_app():
     def index():
         return jsonify({"Message": "Hello, World"})
 
-    @app.route("/api/data", methods=["POST", "GET"])
-    def get_data():
-        id = int(request.json.get("user"))
-        directory = os.path.dirname(os.path.abspath(__file__))
-        data_path = os.path.join(directory, "../q-vercel-latency.json")
+    # @app.route("/api/data", methods=["POST", "GET"])
+    # def get_data():
+    #     id = int(request.json.get("user"))
+    #     directory = os.path.dirname(os.path.abspath(__file__))
+    #     data_path = os.path.join(directory, "../q-vercel-latency.json")
 
-        with open(data_path) as f:
-            data = json.load(f)
+    #     with open(data_path) as f:
+    #         data = json.load(f)
 
-        return data[id]
+    #     return data[id]
 
     return app
 
