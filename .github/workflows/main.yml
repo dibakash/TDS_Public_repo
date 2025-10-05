@@ -1,0 +1,10 @@
+name: TDS GA2 question 6
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 22f1001491@ds.study.iitm.ac.in
+        run: echo "Hello World"
