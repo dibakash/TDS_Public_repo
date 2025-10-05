@@ -46,10 +46,7 @@ import os
 # Create FastAPI app instance
 app = FastAPI()
 
-# Enable CORS for all origins. Note: when allow_origins is ['*'],
-# many browsers will ignore Access-Control-Allow-Credentials if
-# allow_credentials is True. For a true wildcard + credentials,
-# you must set allow_credentials to False or specify explicit origins.
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -61,6 +58,10 @@ app.add_middleware(
 
 
 # ---------- models ----------
+class TestData(BaseModel):
+    data: int
+
+
 class LatencyRequest(BaseModel):
     regions: list[str]
     threshold_ms: float
@@ -69,17 +70,17 @@ class LatencyRequest(BaseModel):
 # ---------- helpers ----------
 def load_telemetry():
     directory = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(directory, "../q-vercel-latency.json")
+    json_data_path = os.path.join(directory, "../q-vercel-latency.json")
 
-    with open(data_path) as f:
+    with open(json_data_path) as f:
         records = json.load(f)
 
-    grouped = {}
+    formatted_data = {}
     for r in records:
-        grouped.setdefault(r["region"], []).append(
+        formatted_data.setdefault(r["region"], []).append(
             {"latency_ms": r["latency_ms"], "uptime": r["uptime_pct"]}
         )
-    return grouped
+    return formatted_data
 
 
 def calc_metrics(latencies, uptimes, threshold, region=None):
@@ -92,7 +93,7 @@ def calc_metrics(latencies, uptimes, threshold, region=None):
     }
 
 
-# ---------- routes ----------
+# APIs
 @app.get("/")
 def health():
     return {"msg": "Hello, World. FastAPI on Vercel is Up!"}
@@ -109,3 +110,12 @@ def latency_metrics(body: LatencyRequest):
         upt = [x["uptime"] for x in telemetry[reg]]
         resp.append(calc_metrics(lat, upt, body.threshold_ms, region=reg))
     return {"regions": resp}
+
+
+@app.post("/api/latency/test")
+def testApi(body: TestData):
+    telemetry = load_telemetry()
+    resp = []  # Initialize resp as a list
+    id = body.data
+    resp.append(telemetry[id])
+    return {"test_result": resp}
