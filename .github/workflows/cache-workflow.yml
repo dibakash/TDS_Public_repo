@@ -25,7 +25,7 @@ jobs:
         restore-keys: |
           cache-89b95ed-${{ runner.os }}-
           
-    - name: prime-cache-89b95ed - Check cache result
+    - name: prime-cache-89b95ed
       run: |
         if [ "${{ steps.cache.outputs.cache-hit }}" == 'true' ]; then
           echo "Cache hit! 🎉"
