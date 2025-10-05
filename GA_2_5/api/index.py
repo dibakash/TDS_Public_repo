@@ -59,7 +59,7 @@ app.add_middleware(
 
 # ---------- models ----------
 class TestData(BaseModel):
-    data: int
+    id: int
 
 
 class LatencyRequest(BaseModel):
@@ -114,8 +114,18 @@ def latency_metrics(body: LatencyRequest):
 
 @app.post("/api/latency/test")
 def testApi(body: TestData):
-    telemetry = load_telemetry()
-    resp = []  # Initialize resp as a list
-    id = body.data
-    resp.append(telemetry[id])
-    return {"test_result": resp}
+    directory = os.path.dirname(os.path.abspath(__file__))
+    json_data_path = os.path.join(directory, "../q-vercel-latency.json")
+
+    with open(json_data_path) as f:
+        records = json.load(f)
+
+    id = body.id
+
+    return {"records": records[id]}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
