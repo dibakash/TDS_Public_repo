@@ -1,5 +1,4 @@
 const URL = "https://tds-public-repo.vercel.app/api/latency/test"
-const userInputValue = document.querySelector("#id")
 const form = document.querySelector("#apiForm")
 const responseDiv = document.querySelector("#response")
 
@@ -8,7 +7,7 @@ const responseDiv = document.querySelector("#response")
 form.addEventListener("submit", async (event) => {
     event.preventDefault(); // Prevent form from submitting traditionally
 
-    const userInput = document.querySelector("#user").value;
+    const userInput = document.querySelector("#id").value;
 
     if (!userInput) {
         displayResponse("Please enter a user value");
