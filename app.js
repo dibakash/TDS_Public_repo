@@ -1,5 +1,5 @@
-const URL = "https://tds-public-repo.vercel.app/api/latency"
-const userInputValue = document.querySelector("#user")
+const URL = "https://tds-public-repo.vercel.app/api/latency/test"
+const userInputValue = document.querySelector("#id")
 const form = document.querySelector("#apiForm")
 const responseDiv = document.querySelector("#response")
 
