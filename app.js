@@ -1,4 +1,4 @@
-const URL = "http://127.0.0.1:5000/api/data"
+const URL = "https://tds-public-repo-3934.vercel.app/api/data"
 const userInputValue = document.querySelector("#user")
 const form = document.querySelector("#apiForm")
 const responseDiv = document.querySelector("#response")
