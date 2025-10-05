@@ -22,14 +22,14 @@ form.addEventListener("submit", async (event) => {
     }
 })
 
-const fetchData = async (user) => {
+const fetchData = async (id) => {
     try {
         const response = await fetch(URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ user: user })
+            body: JSON.stringify({ id: id })
         });
 
         if (!response.ok) {
