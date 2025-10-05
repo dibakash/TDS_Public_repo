@@ -20,7 +20,6 @@ def create_app():
 
         with open(data_path) as f:
             data = json.load(f)
-            print(data)
 
         return data[id]
 
