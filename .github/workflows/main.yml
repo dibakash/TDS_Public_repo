@@ -8,3 +8,41 @@ jobs:
     steps:
       - name: 22f1001491@ds.study.iitm.ac.in
         run: echo "Hello World"
+  cache-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Prime cache with key cache-89b95ed
+      uses: actions/cache@v4
+      id: cache
+      with:
+        path: |
+          ~/.cache
+          node_modules
+          vendor/bundle
+        key: cache-89b95ed-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/Gemfile.lock') }}
+        restore-keys: |
+          cache-89b95ed-${{ runner.os }}-
+          
+    - name: prime-cache-89b95ed
+      run: |
+        if [ "${{ steps.cache.outputs.cache-hit }}" == 'true' ]; then
+          echo "Cache hit! 🎉"
+          echo "Restored from cache key: ${{ steps.cache.outputs.cache-primary-key }}"
+        else
+          echo "Cache miss! 🔨"
+          echo "Priming cache with key: cache-89b95ed"
+        fi
+        echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
+        
+    - name: Simulate dependency installation
+      run: |
+        echo "Installing dependencies..."
+        mkdir -p node_modules
+        echo "fake-dependency" > node_modules/test.txt
+        mkdir -p ~/.cache
+        echo "cached-data" > ~/.cache/data.txt
+        echo "Dependencies installed successfully!"
